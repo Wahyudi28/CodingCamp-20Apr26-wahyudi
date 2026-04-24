@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <title>Life Dashboard</title>
+ <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+ <h1 id="greeting">Hello</h1>
+ <p id="time"></p>
+
+ <input id="nameInput" placeholder="Nama kamu">
+ <button onclick="saveName()">Simpan</button>
+
+ <button onclick="toggleDarkMode()">Dark Mode</button>
+
+ <hr>
+
+ <h2>To-Do List</h2>
+ <input id="taskInput" placeholder="Tambah tugas">
+ <button onclick="addTask()">Tambah</button>
+ <ul id="taskList"></ul>
+
+ <hr>
+
+ <h2>Focus Timer</h2>
+ <p id="timer">25:00</p>
+ <button onclick="startTimer()">Start</button>
+ <button onclick="stopTimer()">Stop</button>
+ <button onclick="resetTimer()">Reset</button>
+
+ <hr>
+
+ <h2>Quick Links</h2>
+ <a href="https://youtube.com" target="_blank">YouTube</a>
+ <a href="https://google.com" target="_blank">Google</a>
+
+ <script src="script.js"></script>
+</body>
+</html>
