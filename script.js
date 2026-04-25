@@ -122,7 +122,7 @@ function getGreeting(hour) {
  * Formats a Date object as a zero-padded 24-hour "HH:MM:SS" string.
  *
  * @param {Date} date - The date/time to format.
- * @returns {string} e.g. "09:05" or "14:30"
+ * @returns {string} e.g. "09:05:00" or "14:30:00"
  */
 function formatTime(date) {
   const hours = String(date.getHours()).padStart(2, "0");
