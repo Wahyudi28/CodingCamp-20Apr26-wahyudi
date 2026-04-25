@@ -122,13 +122,13 @@ function getGreeting(hour) {
  * Formats a Date object as a zero-padded 24-hour "HH:MM:SS" string.
  *
  * @param {Date} date - The date/time to format.
- * @returns {string} e.g. "09:05:00" or "14:30:00"
+ * @returns {string} e.g. "09:05:30" or "14:30:00"
  */
 function formatTime(date) {
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
-  const second = String(date.getSecond()).padStart(2, "0");
-  return `${hours}:${minutes}:${second}`;
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
 }
 
 /**
@@ -653,7 +653,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // --- Greeting widget ---
   updateGreetingWidget();
-  setInterval(updateGreetingWidget, 60000); // Requirement 1.1: update every 60 seconds
+  setInterval(updateGreetingWidget, 1000); // Update every second to show live seconds
 
   // --- Restore saved name into the input field ---
   document.getElementById("name-input").value = loadKey(STORAGE_KEYS.NAME, "");
