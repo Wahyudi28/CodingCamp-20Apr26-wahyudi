@@ -119,7 +119,7 @@ function getGreeting(hour) {
 }
 
 /**
- * Formats a Date object as a zero-padded 24-hour "HH:MM" string.
+ * Formats a Date object as a zero-padded 24-hour "HH:MM:SS" string.
  *
  * @param {Date} date - The date/time to format.
  * @returns {string} e.g. "09:05" or "14:30"
