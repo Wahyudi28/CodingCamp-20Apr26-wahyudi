@@ -1,25 +1,7 @@
 /* css/style.css — Personal Dashboard styles */
 
-:root {
-  --bg-primary: #f5f5f5;
-  --bg-secondary: #ffffff;
-  --text-primary: #1a1a1a;
-  --text-secondary: #555555;
-  --accent: #4a90e2;
-  --border: #dddddd;
-}
-
-[data-theme="dark"] {
-  --bg-primary: #121212;
-  --bg-secondary: #1e1e1e;
-  --text-primary: #f0f0f0;
-  --text-secondary: #aaaaaa;
-  --accent: #7ab3f0;
-  --border: #333333;
-}
-
 /* =============================================================================
-   8.1 — Overall page layout
+   Reset & Base
    ============================================================================= */
 
 *,
@@ -29,64 +11,12 @@
 }
 
 body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: sans-serif;
   margin: 0;
-  padding: 0;
-}
-
-main {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 1rem;
-}
-
-/* Widget sections — used directly on <section> elements */
-section {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 8px;
   padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  max-width: 900px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-header {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0.5rem 1rem;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
-}
-
-h1,
-h2 {
-  color: var(--text-primary);
-  margin-top: 0;
-}
-
-input,
-button {
-  font-size: inherit;
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
-button {
-  cursor: pointer;
-  background: var(--accent);
-  color: #ffffff;
-  border-color: var(--accent);
-}
-
-button:hover {
-  opacity: 0.85;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #6b5be2 0%, #8b5cf6 40%, #a855f7 70%, #7c3aed 100%);
+  color: #1a1a2e;
 }
 
 /* Visually hidden — accessible to screen readers */
@@ -103,49 +33,85 @@ button:hover {
 }
 
 /* =============================================================================
-   8.2 — Greeting widget
+   Greeting / Clock Widget — full width top card
    ============================================================================= */
 
-#greeting-text {
-  font-size: 2rem;
-  margin-bottom: 0.25rem;
+#greeting-widget {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2rem 2rem 1.5rem;
+  margin-bottom: 1.25rem;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
 }
 
 #time-display {
-  font-size: 3rem;
-  font-weight: bold;
-  margin: 0.5rem 0;
-  color: var(--accent);
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: #6b5be2;
+  margin: 0 0 0.25rem;
+  letter-spacing: 2px;
 }
 
 #date-display {
-  font-size: 1.1rem;
-  color: var(--text-secondary);
-  margin-bottom: 1rem;
+  font-size: 1rem;
+  color: #666;
+  margin: 0 0 0.5rem;
 }
 
-.name-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.name-row input {
-  flex: 1;
-  min-width: 150px;
+#greeting-text {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0;
 }
 
 /* =============================================================================
-   8.3 — Timer widget
+   Middle row — 2 columns: Timer | Tasks
    ============================================================================= */
 
-#timer-display {
-  font-size: 4rem;
-  font-weight: bold;
+#middle-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+/* =============================================================================
+   Shared card style
+   ============================================================================= */
+
+section {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+h1, h2 {
+  margin-top: 0;
+  color: #1a1a2e;
+}
+
+h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+/* =============================================================================
+   Focus Timer Widget
+   ============================================================================= */
+
+#timer-widget {
   text-align: center;
-  color: var(--accent);
-  margin: 0.5rem 0;
+}
+
+#timer-display {
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: #6b5be2;
+  margin: 0.5rem 0 1rem;
 }
 
 .timer-btn-row {
@@ -159,26 +125,102 @@ button:hover {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  justify-content: center;
   flex-wrap: wrap;
+  font-size: 0.875rem;
+}
+
+.duration-row input {
+  width: 60px;
+  text-align: center;
 }
 
 #duration-error {
   color: #cc0000;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   display: block;
+  margin-top: 0.25rem;
 }
 
 #timer-complete-msg {
-  background: var(--accent);
+  background: #6b5be2;
   color: #ffffff;
   padding: 0.75rem;
-  border-radius: 4px;
+  border-radius: 8px;
   text-align: center;
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
+  font-weight: 600;
 }
 
 /* =============================================================================
-   8.4 — To-do list widget
+   Buttons
+   ============================================================================= */
+
+button {
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: inherit;
+  padding: 0.45rem 1.1rem;
+  border-radius: 8px;
+  border: none;
+  background: #6b5be2;
+  color: #ffffff;
+  font-weight: 600;
+  transition: opacity 0.15s;
+}
+
+button:hover {
+  opacity: 0.85;
+}
+
+/* Secondary style — lighter grey */
+button.btn-secondary {
+  background: #e0e0e0;
+  color: #333;
+}
+
+button.btn-secondary:hover {
+  opacity: 0.8;
+}
+
+/* Delete button — red */
+button.btn-delete {
+  background: #e53e3e;
+  color: #fff;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+/* =============================================================================
+   Inputs
+   ============================================================================= */
+
+input[type="text"],
+input[type="url"],
+input[type="number"] {
+  font-size: 0.9rem;
+  font-family: inherit;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #d0d0d0;
+  background: #ffffff;
+  color: #1a1a2e;
+  outline: none;
+}
+
+input[type="text"]:focus,
+input[type="url"]:focus,
+input[type="number"]:focus {
+  border-color: #6b5be2;
+  box-shadow: 0 0 0 2px rgba(107,91,226,0.2);
+}
+
+input::placeholder {
+  color: #aaa;
+}
+
+/* =============================================================================
+   To-Do List Widget
    ============================================================================= */
 
 .todo-input-row {
@@ -202,7 +244,7 @@ button:hover {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .todo-item:last-child {
@@ -211,21 +253,37 @@ button:hover {
 
 .todo-item span {
   flex: 1;
+  font-size: 0.95rem;
 }
 
 .todo-item span.completed {
   text-decoration: line-through;
-  color: var(--text-secondary);
+  color: #aaa;
 }
 
-.todo-item button {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.8rem;
+.todo-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #6b5be2;
+  cursor: pointer;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+}
+
+.todo-item input[type="text"] {
+  flex: 1;
+  font-size: 0.9rem;
 }
 
 /* =============================================================================
-   8.5 — Quick links widget
+   Quick Links Widget
    ============================================================================= */
+
+#links-widget {
+  /* sits below middle-row, full width */
+}
 
 .links-input-row {
   display: flex;
@@ -236,7 +294,7 @@ button:hover {
 
 .links-input-row input {
   flex: 1;
-  min-width: 120px;
+  min-width: 100px;
 }
 
 #links-container {
@@ -245,63 +303,54 @@ button:hover {
   gap: 0.5rem;
 }
 
+/* Pill-style link buttons */
 .link-item {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.25rem 0.5rem;
+  gap: 0;
+  background: #6b5be2;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .link-item a {
-  color: var(--accent);
+  color: #ffffff;
   text-decoration: none;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .link-item a:hover {
-  text-decoration: underline;
+  opacity: 0.9;
 }
 
 .link-item button {
-  padding: 0.2rem 0.4rem;
-  font-size: 0.75rem;
+  background: #5a4bd1;
+  color: #fff;
+  border: none;
+  border-radius: 0;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.link-item button:hover {
+  background: #e53e3e;
+  opacity: 1;
 }
 
 /* =============================================================================
-   8.6 — Theme toggle button
+   Responsive — stack to single column on small screens
    ============================================================================= */
 
-#theme-toggle-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1rem;
-}
+@media (max-width: 640px) {
+  #middle-row {
+    grid-template-columns: 1fr;
+  }
 
-#theme-toggle-btn:hover {
-  background: var(--bg-primary);
-  opacity: 1; /* override the generic button:hover opacity */
-}
-
-/* =============================================================================
-   8.7 — Dark theme verification
-   All colours above use CSS custom properties (var(--...)) so the
-   [data-theme="dark"] overrides in :root apply automatically.
-   The only extra rule needed is to ensure <input> backgrounds follow
-   the theme variable rather than the browser default.
-   ============================================================================= */
-
-input {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border-color: var(--border);
-}
-
-input::placeholder {
-  color: var(--text-secondary);
+  body {
+    padding: 1rem;
+  }
 }
