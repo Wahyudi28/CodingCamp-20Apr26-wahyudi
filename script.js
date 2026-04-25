@@ -125,10 +125,10 @@ function getGreeting(hour) {
  * @returns {string} e.g. "09:05:30" or "14:30:00"
  */
 function formatTime(date) {
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const seconds = String(date.getSeconds()).padStart(2, "0");
-  return `${hours}:${minutes}:${seconds}`;
+  const h = String(date.getHours()).padStart(2, "0");
+  const m = String(date.getMinutes()).padStart(2, "0");
+  const s = String(date.getSeconds()).padStart(2, "0");
+  return h + ":" + m + ":" + s;
 }
 
 /**
@@ -168,6 +168,7 @@ function updateGreetingWidget() {
  */
 function saveName() {
   const input = document.getElementById("name-input");
+  if (!input) return;
   const trimmedName = input.value.trim();
   saveKey(STORAGE_KEYS.NAME, trimmedName);
   updateGreetingWidget();
@@ -179,7 +180,8 @@ function saveName() {
  */
 function clearName() {
   saveKey(STORAGE_KEYS.NAME, "");
-  document.getElementById("name-input").value = "";
+  const input = document.getElementById("name-input");
+  if (input) input.value = "";
   updateGreetingWidget();
 }
 
@@ -451,6 +453,7 @@ function renderTasks() {
     // --- Delete button ---
     const deleteBtn = document.createElement("button");
     deleteBtn.textContent = "Delete";
+    deleteBtn.className = "btn-delete";
     deleteBtn.setAttribute("aria-label", "Delete task: " + task.text);
     deleteBtn.onclick = function () {
       deleteTask(task.id);
@@ -575,7 +578,7 @@ function renderLinks() {
 
     // --- Delete button ---
     const deleteBtn = document.createElement("button");
-    deleteBtn.textContent = "Delete";
+    deleteBtn.textContent = "×";
     deleteBtn.setAttribute("aria-label", "Delete link: " + (link.label || link.url));
     deleteBtn.onclick = function () {
       deleteLink(link.id);
@@ -655,10 +658,13 @@ document.addEventListener("DOMContentLoaded", function () {
   updateGreetingWidget();
   setInterval(updateGreetingWidget, 1000); // Update every second to show live seconds
 
-  // --- Restore saved name into the input field ---
-  document.getElementById("name-input").value = loadKey(STORAGE_KEYS.NAME, "");
+  // --- Restore saved name into the input field (if element exists) ---
+  const nameInput = document.getElementById("name-input");
+  if (nameInput) {
+    nameInput.value = loadKey(STORAGE_KEYS.NAME, "");
+  }
 
-  // --- Timer control buttons (no inline onclick in HTML) ---
+  // --- Timer control buttons ---
   document.getElementById("timer-start-btn").addEventListener("click", function () {
     timer.start();
   });
@@ -671,20 +677,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // --- Enter key support for inputs ---
   document.getElementById("todo-input").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") {
-      addTask();
-    }
+    if (e.key === "Enter") { addTask(); }
   });
 
-  document.getElementById("name-input").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") {
-      saveName();
-    }
-  });
+  const nameInputEl = document.getElementById("name-input");
+  if (nameInputEl) {
+    nameInputEl.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { saveName(); }
+    });
+  }
 
   document.getElementById("link-url-input").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") {
-      addLink();
-    }
+    if (e.key === "Enter") { addLink(); }
   });
 });
