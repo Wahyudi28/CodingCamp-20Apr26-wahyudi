@@ -1,4 +1,4 @@
-/* style.css — Personal Dashboard styles */
+/* css/style.css — Personal Dashboard styles */
 
 /* =============================================================================
    Reset & Base
@@ -15,7 +15,7 @@ body {
   padding: 1.5rem;
   min-height: 100vh;
   font-family: 'Segoe UI', Arial, sans-serif;
-  background: linear-gradient(135deg, #6b5be2 0%, #8b5cf6 40%, #a855f7 70%, #7c3aed 100%);
+  background: linear-gradient(135deg, #1a1a6e 0%, #3b2f8f 25%, #6b35b0 55%, #c2185b 85%, #e91e8c 100%);
   color: #1a1a2e;
 }
 
