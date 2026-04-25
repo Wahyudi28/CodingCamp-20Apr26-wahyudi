@@ -1,0 +1,749 @@
+# Design Document
+
+## Personal Dashboard
+
+---
+
+## Overview
+
+The Personal Dashboard is a single-page web application (SPA) built with vanilla HTML, CSS, and JavaScript. It runs entirely in the browser with no backend, no build tools, and no external dependencies. All state is persisted via the browser's `localStorage` API.
+
+The application is a complete rewrite of the existing prototype (`Index.html`, `style.css`, `script.js`). The prototype demonstrates the core concept but lacks the full feature set, proper structure, validation, accessibility, and cross-browser compatibility required by the specification.
+
+The finished product consists of exactly three files:
+
+| File | Purpose |
+|---|---|
+| `Index.html` | Markup, widget structure, semantic HTML |
+| `css/style.css` | All visual styles, CSS custom properties for theming |
+| `js/script.js` | All application logic, state management, localStorage I/O |
+
+> **Note:** The existing `style.css` and `script.js` at the root will be replaced by the files under `css/` and `js/` respectively, and `Index.html` will be updated to reference the new paths.
+
+---
+
+## Architecture
+
+The application follows a simple **widget-based architecture** with a shared state object and a central persistence layer. There is no virtual DOM, no reactive framework, and no module bundler.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                        Index.html                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │  Greeting    │  │    Timer     │  │   Todo List   │  │
+│  │  Widget      │  │   Widget     │  │   Widget      │  │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬────────┘  │
+│         │                 │                  │           │
+│  ┌──────┴─────────────────┴──────────────────┴────────┐  │
+│  │              Quick Links Widget                     │  │
+│  └──────────────────────────┬──────────────────────────┘  │
+│                             │                             │
+│  ┌──────────────────────────▼──────────────────────────┐  │
+│  │              js/script.js                           │  │
+│  │  ┌─────────────┐  ┌──────────────┐  ┌───────────┐  │  │
+│  │  │  App State  │  │  Storage API │  │  Render   │  │  │
+│  │  │  (in-memory)│◄─►│  (localStorage)│  │  Fns     │  │  │
+│  │  └─────────────┘  └──────────────┘  └───────────┘  │  │
+│  └─────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Key Architectural Decisions
+
+1. **Single JS file**: All logic lives in `js/script.js`. Functions are grouped by widget. This keeps the project simple and avoids module/import complexity that would require a bundler.
+
+2. **CSS custom properties for theming**: Light/dark mode is implemented by toggling a `data-theme` attribute on `<html>`. CSS variables defined under `[data-theme="dark"]` override the defaults. This avoids a flash of unstyled content (FOUC) when the theme is applied before first paint.
+
+3. **Centralised storage layer**: All `localStorage` reads and writes go through two helper functions (`loadState` / `saveKey`) so that the fallback behaviour (Requirement 8.4) is handled in one place.
+
+4. **No global mutable state for the timer**: The timer uses a closure to encapsulate its interval ID and remaining seconds, preventing accidental mutation from other widgets.
+
+5. **DOM-driven rendering**: Each widget has a dedicated `render*()` function that rebuilds its DOM subtree from the current in-memory state. This keeps rendering predictable and easy to reason about.
+
+---
+
+## Components and Interfaces
+
+### 1. Greeting Widget
+
+**HTML elements:**
+- `#greeting-text` — `<h1>` displaying the greeting + optional name
+- `#time-display` — `<p>` displaying HH:MM
+- `#date-display` — `<p>` displaying full date string
+- `#name-input` — `<input type="text">` for entering a display name
+- `#name-save-btn` — `<button>` to save the name
+- `#name-clear-btn` — `<button>` to clear the saved name
+
+**JS functions:**
+```
+getGreeting(hour: number): string
+  Returns "Good morning" | "Good afternoon" | "Good evening" | "Good night"
+  based on the hour (0–23).
+
+formatTime(date: Date): string
+  Returns time as "HH:MM" (24-hour, zero-padded).
+
+formatDate(date: Date): string
+  Returns date as "Weekday, Month Day" e.g. "Monday, July 14".
+
+updateGreetingWidget(): void
+  Reads current Date, calls getGreeting/formatTime/formatDate,
+  updates DOM elements. Called on load and every 60 seconds via setInterval.
+
+saveName(): void
+  Reads #name-input value, trims whitespace, saves to localStorage,
+  calls updateGreetingWidget().
+
+clearName(): void
+  Removes name from localStorage, clears #name-input, calls updateGreetingWidget().
+```
+
+---
+
+### 2. Focus Timer Widget
+
+**HTML elements:**
+- `#timer-display` — `<p>` showing MM:SS
+- `#timer-start-btn` — `<button>` Start
+- `#timer-stop-btn` — `<button>` Stop / Pause
+- `#timer-reset-btn` — `<button>` Reset
+- `#duration-input` — `<input type="number" min="1" max="120">` for custom duration
+- `#duration-save-btn` — `<button>` to save duration
+- `#duration-error` — `<span>` for validation message (hidden by default)
+- `#timer-complete-msg` — `<div>` notification shown when countdown reaches 00:00
+
+**JS functions (timer closure):**
+```
+createTimer(): TimerController
+  Returns an object with start(), stop(), reset(), setDuration(minutes) methods.
+  Encapsulates intervalId and remainingSeconds.
+
+formatTimerDisplay(seconds: number): string
+  Returns "MM:SS" zero-padded string.
+
+saveDuration(): void
+  Validates #duration-input (1–120), saves to localStorage,
+  resets timer display if timer is not running.
+
+initTimer(): void
+  Reads duration from localStorage (default 25), initialises display.
+```
+
+**Timer state machine:**
+```
+IDLE ──start()──► RUNNING ──stop()──► PAUSED
+  ▲                  │                  │
+  └──reset()─────────┘                  │
+  ▲                                     │
+  └──────────────reset()────────────────┘
+RUNNING ──reaches 00:00──► COMPLETE (auto-stop + notification)
+```
+
+---
+
+### 3. To-Do List Widget
+
+**HTML elements:**
+- `#todo-input` — `<input type="text">` for new task text
+- `#todo-add-btn` — `<button>` Add
+- `#todo-list` — `<ul>` containing task `<li>` elements
+
+Each `<li>` contains:
+- A `<input type="checkbox">` for completion toggle
+- A `<span>` for task text (becomes `<input>` during edit)
+- An Edit `<button>`
+- A Delete `<button>`
+
+**JS functions:**
+```
+addTask(): void
+  Reads #todo-input, trims, rejects empty, appends to tasks array,
+  saves to localStorage, calls renderTasks().
+
+deleteTask(id: string): void
+  Removes task with matching id from array, saves, re-renders.
+
+toggleTask(id: string): void
+  Flips task.completed, saves, re-renders.
+
+editTask(id: string, newText: string): void
+  Updates task.text, saves, re-renders.
+
+renderTasks(): void
+  Rebuilds #todo-list innerHTML from tasks array.
+
+loadTasks(): Task[]
+  Reads from localStorage, returns array (default []).
+```
+
+**Task data shape:**
+```js
+{
+  id: string,       // crypto.randomUUID() or Date.now().toString()
+  text: string,
+  completed: boolean
+}
+```
+
+---
+
+### 4. Quick Links Widget
+
+**HTML elements:**
+- `#link-label-input` — `<input type="text">` for display label
+- `#link-url-input` — `<input type="url">` for URL
+- `#link-add-btn` — `<button>` Add Link
+- `#links-container` — `<div>` containing link buttons
+
+Each link entry renders as:
+- An `<a>` button opening in `target="_blank" rel="noopener noreferrer"`
+- A Delete `<button>`
+
+**JS functions:**
+```
+addLink(): void
+  Reads label + URL inputs, rejects empty URL, appends to links array,
+  saves to localStorage, calls renderLinks().
+
+deleteLink(id: string): void
+  Removes link with matching id, saves, re-renders.
+
+renderLinks(): void
+  Rebuilds #links-container from links array.
+
+loadLinks(): Link[]
+  Reads from localStorage, returns array (default []).
+```
+
+**Link data shape:**
+```js
+{
+  id: string,
+  label: string,
+  url: string
+}
+```
+
+---
+
+### 5. Theme Toggle
+
+**HTML elements:**
+- `#theme-toggle-btn` — `<button>` with sun/moon icon
+
+**JS functions:**
+```
+applyTheme(theme: "light" | "dark"): void
+  Sets data-theme attribute on <html> element.
+
+toggleTheme(): void
+  Reads current theme, flips it, saves to localStorage, calls applyTheme().
+
+initTheme(): void
+  Reads theme from localStorage (default "light"), calls applyTheme().
+  Called synchronously at the top of script.js before DOM content renders.
+```
+
+---
+
+### 6. Storage Layer
+
+```
+STORAGE_KEYS = {
+  NAME: "pd_name",
+  TASKS: "pd_tasks",
+  LINKS: "pd_links",
+  DURATION: "pd_duration",
+  THEME: "pd_theme"
+}
+
+saveKey(key: string, value: any): void
+  JSON.stringify(value) → localStorage.setItem(key, ...).
+  Wrapped in try/catch; silently fails if storage unavailable.
+
+loadKey(key: string, defaultValue: any): any
+  localStorage.getItem(key) → JSON.parse.
+  Returns defaultValue on missing key, parse error, or storage error.
+```
+
+---
+
+## Data Models
+
+### AppState (in-memory, not persisted as a single object)
+
+Each widget manages its own slice of state independently. There is no single global state object. The in-memory representations are:
+
+```js
+// Greeting
+let userName = "";          // string, "" means no name saved
+
+// Timer
+let pomoDuration = 25;      // integer minutes, 1–120
+let remainingSeconds = 1500; // integer seconds
+let timerRunning = false;
+
+// Tasks
+let tasks = [];             // Task[]
+
+// Links
+let links = [];             // Link[]
+
+// Theme
+let currentTheme = "light"; // "light" | "dark"
+```
+
+### Persisted Shapes (localStorage values)
+
+| Key | Type | Example |
+|---|---|---|
+| `pd_name` | `string` | `"Alex"` |
+| `pd_tasks` | `Task[]` | `[{"id":"1","text":"Buy milk","completed":false}]` |
+| `pd_links` | `Link[]` | `[{"id":"2","label":"YouTube","url":"https://youtube.com"}]` |
+| `pd_duration` | `number` | `45` |
+| `pd_theme` | `string` | `"dark"` |
+
+### CSS Custom Properties (theming)
+
+```css
+:root {
+  --bg-primary: #f5f5f5;
+  --bg-secondary: #ffffff;
+  --text-primary: #1a1a1a;
+  --text-secondary: #555555;
+  --accent: #4a90e2;
+  --border: #dddddd;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #121212;
+  --bg-secondary: #1e1e1e;
+  --text-primary: #f0f0f0;
+  --text-secondary: #aaaaaa;
+  --accent: #7ab3f0;
+  --border: #333333;
+}
+```
+
+---
+
+## Correctness Properties
+
+*A property is a characteristic or behavior that should hold true across all valid executions of a system — essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+
+### Property 1: Greeting is exhaustive and non-overlapping across all hours
+
+*For any* integer hour in the range 0–23, `getGreeting(hour)` SHALL return exactly one of `"Good morning"`, `"Good afternoon"`, `"Good evening"`, or `"Good night"`, and the returned value SHALL be consistent with the hour ranges defined in the requirements (morning: 5–11, afternoon: 12–17, evening: 18–21, night: 22–23 and 0–4).
+
+**Validates: Requirements 1.3, 1.4, 1.5, 1.6**
+
+---
+
+### Property 2: Timer display always produces valid MM:SS format
+
+*For any* integer number of seconds in the range 0–7200 (0 to 120 minutes), `formatTimerDisplay(seconds)` SHALL return a string matching the pattern `MM:SS` where both parts are zero-padded two-digit integers and the seconds part is always in the range 0–59.
+
+**Validates: Requirements 3.1**
+
+---
+
+### Property 3: Task addition round-trip
+
+*For any* non-empty, non-whitespace task text string, after calling `addTask()` with that text, the task SHALL be retrievable from `localStorage` with the same text and `completed: false`, and the tasks array length SHALL have increased by exactly one.
+
+**Validates: Requirements 5.2, 5.7**
+
+---
+
+### Property 4: Whitespace-only input is rejected for tasks and links
+
+*For any* string composed entirely of whitespace characters (including the empty string), calling `addTask()` SHALL leave the tasks array unchanged and SHALL NOT write a new entry to `localStorage`; likewise, calling `addLink()` with a whitespace-only URL SHALL leave the links array unchanged.
+
+**Validates: Requirements 5.8, 6.6**
+
+---
+
+### Property 5: Task completion toggle is an involution
+
+*For any* task in the list, calling `toggleTask(id)` twice in succession SHALL return the task to its original `completed` state, and the persisted value in `localStorage` SHALL match the in-memory state after each toggle.
+
+**Validates: Requirements 5.4**
+
+---
+
+### Property 6: Delete removes the item from the collection and from localStorage
+
+*For any* non-empty tasks array or links array, calling `deleteTask(id)` or `deleteLink(id)` for an existing item SHALL result in that item being absent from both the in-memory array and the persisted `localStorage` value, while all other items remain unchanged.
+
+**Validates: Requirements 5.6, 6.5**
+
+---
+
+### Property 7: Pomodoro duration validation accepts valid range and rejects invalid range
+
+*For any* integer in the range 1–120, `saveDuration()` SHALL accept the value, persist it to `localStorage`, and update the timer display; *for any* integer outside that range (or a non-integer), `saveDuration()` SHALL reject the input, display a validation message, and leave `localStorage` unchanged.
+
+**Validates: Requirements 4.1, 4.2, 4.5**
+
+---
+
+### Property 8: Theme persistence round-trip
+
+*For any* sequence of `toggleTheme()` calls, the value stored in `localStorage` under the theme key SHALL always equal the `data-theme` attribute currently applied to the `<html>` element, and calling `initTheme()` after saving a theme SHALL restore that exact theme.
+
+**Validates: Requirements 7.3, 7.4**
+
+---
+
+### Property 9: localStorage serialisation round-trip
+
+*For any* valid tasks array or links array (including arrays with mixed completion states, special characters in text, and arbitrary URLs), serialising it with `saveKey()` and then deserialising it with `loadKey()` SHALL produce a value deeply equal to the original.
+
+**Validates: Requirements 8.2, 8.3**
+
+---
+
+### Property 10: localStorage fallback returns defaults on failure
+
+*For any* call to `loadKey(key, defaultValue)` when `localStorage` is unavailable or throws an error, the function SHALL return `defaultValue` without throwing, allowing the application to continue operating with default state.
+
+**Validates: Requirements 8.4**
+
+---
+
+## Error Handling
+
+### localStorage Unavailability (Requirement 8.4)
+
+All `localStorage` access is wrapped in `try/catch`. If `localStorage` is unavailable (e.g., private browsing with storage blocked, quota exceeded):
+
+- `saveKey()` silently swallows the error — the in-memory state is still updated so the UI continues to work for the current session.
+- `loadKey()` returns the provided `defaultValue` — the app starts with defaults.
+- No error is surfaced to the user unless it affects a visible operation.
+
+### Timer Edge Cases
+
+- If `startTimer()` is called while the timer is already running, the call is a no-op (guard against double-click).
+- If `setDuration()` is called while the timer is running, the new duration is saved but the display is NOT reset until the user explicitly resets.
+
+### Input Validation
+
+| Widget | Invalid input | Response |
+|---|---|---|
+| Todo | Empty / whitespace text | Reject silently, keep input focused |
+| Timer duration | Outside 1–120 or non-integer | Show `#duration-error` message, do not save |
+| Quick Links | Empty URL | Reject silently, keep input focused |
+| Name | Any string (no restriction) | Accept; empty string treated as "no name" |
+
+### Notification on Timer Completion
+
+When the countdown reaches 00:00:
+1. The timer stops automatically.
+2. `#timer-complete-msg` becomes visible.
+3. If the browser supports it, `new Audio(...)` plays a short beep (data URI, no external file needed). The audio call is wrapped in `try/catch` so failure is silent.
+4. The notification is dismissed when the user clicks Reset or starts a new session.
+
+---
+
+## Testing Strategy
+
+This project uses vanilla JavaScript with no build tools. Testing is done with plain browser-executable scripts or a lightweight test runner that requires no installation.
+
+### Recommended Approach: `qunit` via CDN (or plain assertions)
+
+Since no build tools are permitted, tests can be written as a separate `tests/test.js` file loaded by a `tests/index.html` page that imports [QUnit](https://qunitjs.com/) via CDN. QUnit requires no npm, no bundler, and runs entirely in the browser.
+
+Alternatively, pure assertion-based tests can be written as a standalone script that `console.assert()`s expected values and logs results — zero dependencies.
+
+### Unit Tests (Example-Based)
+
+These cover specific scenarios and edge cases:
+
+| Test | Covers |
+|---|---|
+| `getGreeting(6)` returns `"Good morning"` | Req 1.3 |
+| `getGreeting(12)` returns `"Good afternoon"` | Req 1.4 |
+| `getGreeting(18)` returns `"Good evening"` | Req 1.5 |
+| `getGreeting(22)` returns `"Good night"` | Req 1.6 |
+| `getGreeting(0)` returns `"Good night"` | Req 1.6 boundary |
+| `formatTimerDisplay(0)` returns `"00:00"` | Req 3.1 |
+| `formatTimerDisplay(90)` returns `"01:30"` | Req 3.1 |
+| `formatTimerDisplay(1500)` returns `"25:00"` | Req 3.1 |
+| `addTask("")` leaves tasks unchanged | Req 5.8 |
+| `addTask("  ")` leaves tasks unchanged | Req 5.8 |
+| `saveDuration(0)` shows error, does not save | Req 4.5 |
+| `saveDuration(121)` shows error, does not save | Req 4.5 |
+| `saveDuration(25)` saves successfully | Req 4.1 |
+| `addLink()` with empty URL leaves links unchanged | Req 6.6 |
+| Theme defaults to `"light"` when no preference saved | Req 7.5 |
+| Duration defaults to `25` when no value saved | Req 4.4 |
+
+### Property-Based Tests
+
+Property-based testing is applicable here because the core logic functions (`getGreeting`, `formatTimerDisplay`, task/link CRUD, localStorage serialisation) are pure or near-pure functions whose correctness should hold across a wide input space.
+
+**Library**: [fast-check](https://fast-check.dev/) loaded via CDN (no npm required).
+
+Each property test runs a minimum of **100 iterations**.
+
+Tag format: `// Feature: personal-dashboard, Property N: <property_text>`
+
+| Property | Test description |
+|---|---|
+| **Property 1** | `fc.integer({min:0, max:23})` → `getGreeting(h)` always returns one of the four valid strings, correct for each range |
+| **Property 2** | `fc.integer({min:0, max:7200})` → `formatTimerDisplay(s)` always matches `/^\d{2}:\d{2}$/` and seconds part is 0–59 |
+| **Property 3** | `fc.string({minLength:1}).filter(s => s.trim() !== "")` → task add round-trip: text and completed=false in localStorage, length +1 |
+| **Property 4** | `fc.stringMatching(/^\s*$/)` → `addTask()` and `addLink()` (whitespace URL) both leave arrays unchanged |
+| **Property 5** | `fc.string({minLength:1}).filter(s => s.trim() !== "")` → double-toggle restores original `completed` state, localStorage matches |
+| **Property 6** | `fc.integer({min:1, max:120})` accepted + persisted; `fc.integer().filter(n => n < 1 \|\| n > 120)` rejected, localStorage unchanged |
+| **Property 7** | `fc.integer({min:1, max:10})` toggles → localStorage theme always equals data-theme attribute; initTheme() restores saved value |
+| **Property 8** | `fc.array(taskArbitrary)` and `fc.array(linkArbitrary)` → `saveKey` then `loadKey` produces deeply equal array |
+| **Property 9** | `fc.string({minLength:1})` task/link id → delete removes item from array and localStorage, others unchanged |
+| **Property 10** | Mock localStorage to throw → `loadKey(key, default)` returns default without throwing |
+
+### Integration / Smoke Tests (Manual)
+
+These are verified manually in each target browser (Chrome, Firefox, Edge, Safari):
+
+- Page loads and renders all widgets within 2 seconds
+- Theme is applied before first paint (no FOUC)
+- All data persists across page reload
+- Timer counts down correctly and stops at 00:00
+- All CRUD operations work end-to-end
+# Requirements Document
+
+## Introduction
+
+A personal dashboard web application built with HTML, CSS, and Vanilla JavaScript. The dashboard runs entirely in the browser with no backend server. It provides a greeting with the current time and date, a focus (Pomodoro) timer, a to-do list, and a quick links panel. User preferences and data are persisted using the browser's Local Storage API. Optional enhancements include light/dark theme toggling, a personalised greeting with a custom name, and a configurable Pomodoro timer duration.
+
+## Glossary
+
+- **Dashboard**: The single-page web application described in this document.
+- **Greeting_Widget**: The UI component that displays the current time, date, and a personalised greeting message.
+- **Timer**: The focus (Pomodoro) countdown timer component.
+- **Todo_List**: The UI component that manages the user's task items.
+- **Quick_Links**: The UI component that stores and displays shortcut buttons to favourite websites.
+- **Local_Storage**: The browser's `localStorage` API used for all client-side data persistence.
+- **Theme**: The visual colour scheme of the Dashboard, either "light" or "dark".
+- **Task**: A single to-do item with a text description and a completion state.
+- **Link**: A saved shortcut consisting of a display label and a URL.
+- **Pomodoro_Duration**: The configurable countdown length for the Timer, expressed in whole minutes.
+
+---
+
+## Requirements
+
+### Requirement 1: Display Greeting with Time and Date
+
+**User Story:** As a user, I want to see the current time, date, and a time-appropriate greeting when I open the dashboard, so that I am immediately oriented to the current moment.
+
+#### Acceptance Criteria
+
+1. THE Greeting_Widget SHALL display the current time in HH:MM format, updated every minute.
+2. THE Greeting_Widget SHALL display the current date including the day of the week, month, and day number.
+3. WHEN the current hour is between 05:00 and 11:59, THE Greeting_Widget SHALL display the greeting "Good morning".
+4. WHEN the current hour is between 12:00 and 17:59, THE Greeting_Widget SHALL display the greeting "Good afternoon".
+5. WHEN the current hour is between 18:00 and 21:59, THE Greeting_Widget SHALL display the greeting "Good evening".
+6. WHEN the current hour is between 22:00 and 04:59, THE Greeting_Widget SHALL display the greeting "Good night".
+
+---
+
+### Requirement 2: Custom Name in Greeting
+
+**User Story:** As a user, I want to enter my name so that the greeting addresses me personally, making the dashboard feel more welcoming.
+
+#### Acceptance Criteria
+
+1. THE Greeting_Widget SHALL provide an input field that allows the user to enter a display name.
+2. WHEN the user saves a name, THE Greeting_Widget SHALL append the name to the greeting message (e.g., "Good morning, Alex").
+3. WHEN a name has been saved, THE Dashboard SHALL persist the name in Local_Storage so that it is restored on subsequent page loads.
+4. WHEN no name has been saved, THE Greeting_Widget SHALL display the greeting without a name suffix.
+5. IF the user clears the saved name, THEN THE Greeting_Widget SHALL revert to displaying the greeting without a name suffix.
+
+---
+
+### Requirement 3: Focus Timer
+
+**User Story:** As a user, I want a countdown timer so that I can time focused work sessions.
+
+#### Acceptance Criteria
+
+1. THE Timer SHALL display the remaining time in MM:SS format.
+2. WHEN the user activates the start control, THE Timer SHALL begin counting down from the configured Pomodoro_Duration.
+3. WHEN the user activates the stop control, THE Timer SHALL pause the countdown and retain the remaining time.
+4. WHEN the user activates the reset control, THE Timer SHALL stop the countdown and restore the display to the full Pomodoro_Duration.
+5. WHEN the countdown reaches 00:00, THE Timer SHALL stop automatically and provide a visual or audible notification to the user.
+6. WHILE the Timer is counting down, THE Timer SHALL update the displayed time every second.
+
+---
+
+### Requirement 4: Configurable Pomodoro Duration
+
+**User Story:** As a user, I want to set a custom timer duration so that I can adapt the focus session length to my personal workflow.
+
+#### Acceptance Criteria
+
+1. THE Timer SHALL provide an input control that allows the user to set the Pomodoro_Duration to any whole number of minutes between 1 and 120 inclusive.
+2. WHEN the user saves a new Pomodoro_Duration, THE Timer SHALL persist the value in Local_Storage.
+3. WHEN the Dashboard loads, THE Timer SHALL restore the Pomodoro_Duration from Local_Storage and initialise the display accordingly.
+4. WHEN no Pomodoro_Duration has been saved, THE Timer SHALL default to a duration of 25 minutes.
+5. IF the user enters a value outside the range 1–120, THEN THE Timer SHALL reject the input and display a validation message indicating the valid range.
+6. WHEN a new Pomodoro_Duration is saved while the Timer is not running, THE Timer SHALL reset the display to reflect the new duration immediately.
+
+---
+
+### Requirement 5: To-Do List
+
+**User Story:** As a user, I want to manage a list of tasks so that I can track what I need to accomplish during my work session.
+
+#### Acceptance Criteria
+
+1. THE Todo_List SHALL provide an input field and a submit control that allow the user to add a new Task.
+2. WHEN the user submits a new Task, THE Todo_List SHALL append the Task to the list and persist the updated list in Local_Storage.
+3. THE Todo_List SHALL display each Task with a completion toggle, an edit control, and a delete control.
+4. WHEN the user activates the completion toggle for a Task, THE Todo_List SHALL update the Task's completion state and persist the change in Local_Storage.
+5. WHEN the user activates the edit control for a Task, THE Todo_List SHALL allow the user to modify the Task's text and save the updated text to Local_Storage.
+6. WHEN the user activates the delete control for a Task, THE Todo_List SHALL remove the Task from the list and persist the updated list in Local_Storage.
+7. WHEN the Dashboard loads, THE Todo_List SHALL restore all Tasks from Local_Storage, preserving their text and completion state.
+8. IF the user attempts to submit a Task with an empty text field, THEN THE Todo_List SHALL reject the submission and leave the list unchanged.
+
+---
+
+### Requirement 6: Quick Links
+
+**User Story:** As a user, I want to save shortcut buttons to my favourite websites so that I can navigate to them quickly from the dashboard.
+
+#### Acceptance Criteria
+
+1. THE Quick_Links SHALL provide input fields for a display label and a URL, and a submit control that allows the user to add a new Link.
+2. WHEN the user submits a new Link, THE Quick_Links SHALL display a button for the Link and persist the updated link collection in Local_Storage.
+3. WHEN the user activates a Link button, THE Quick_Links SHALL open the associated URL in a new browser tab.
+4. WHEN the Dashboard loads, THE Quick_Links SHALL restore all saved Links from Local_Storage.
+5. THE Quick_Links SHALL provide a delete control for each Link that removes it from the collection and persists the change in Local_Storage.
+6. IF the user attempts to submit a Link with an empty URL field, THEN THE Quick_Links SHALL reject the submission and leave the collection unchanged.
+
+---
+
+### Requirement 7: Light / Dark Mode
+
+**User Story:** As a user, I want to toggle between a light and a dark theme so that I can use the dashboard comfortably in different lighting conditions.
+
+#### Acceptance Criteria
+
+1. THE Dashboard SHALL provide a toggle control that switches the Theme between "light" and "dark".
+2. WHEN the user activates the theme toggle, THE Dashboard SHALL apply the selected Theme to all UI components immediately without a page reload.
+3. WHEN the user selects a Theme, THE Dashboard SHALL persist the preference in Local_Storage.
+4. WHEN the Dashboard loads, THE Dashboard SHALL restore the Theme from Local_Storage and apply it before rendering content to avoid a flash of unstyled content.
+5. WHEN no Theme preference has been saved, THE Dashboard SHALL apply the "light" Theme by default.
+
+---
+
+### Requirement 8: Data Persistence and Storage
+
+**User Story:** As a user, I want all my settings and data to be saved automatically so that my dashboard is ready to use every time I open it.
+
+#### Acceptance Criteria
+
+1. THE Dashboard SHALL use only the browser Local_Storage API for all data persistence; no server-side storage is permitted.
+2. WHEN any user-configurable value changes (Task list, Link collection, Pomodoro_Duration, custom name, Theme preference), THE Dashboard SHALL write the updated value to Local_Storage before the next user interaction.
+3. WHEN the Dashboard loads, THE Dashboard SHALL read all persisted values from Local_Storage and restore the UI to the state from the previous session.
+4. IF Local_Storage is unavailable or a read operation fails, THEN THE Dashboard SHALL fall back to default values and continue operating without data persistence.
+
+---
+
+### Requirement 9: Browser Compatibility and Performance
+
+**User Story:** As a user, I want the dashboard to load quickly and work reliably in any modern browser so that I can use it without friction.
+
+#### Acceptance Criteria
+
+1. THE Dashboard SHALL be implemented using only HTML, CSS, and Vanilla JavaScript with no external frameworks or libraries.
+2. THE Dashboard SHALL function correctly in the current stable releases of Chrome, Firefox, Edge, and Safari.
+3. THE Dashboard SHALL complete its initial render within 2 seconds on a standard broadband connection.
+4. WHEN the user interacts with any UI control, THE Dashboard SHALL reflect the change in the UI within 100 milliseconds.
+# Tasks
+
+## Implementation Plan
+
+- [x] 1. Project structure and scaffolding
+  - [x] 1.1 Create `css/` and `js/` directories and move/replace the root-level `style.css` and `script.js` with the new files at `css/style.css` and `js/script.js`
+  - [x] 1.2 Update `Index.html` to reference `css/style.css` and `js/script.js`, add semantic widget sections (`<section>` elements with IDs for each widget), and add `data-theme` attribute initialisation on `<html>`
+  - [x] 1.3 Define all CSS custom properties (light theme variables) in `:root` and dark theme overrides in `[data-theme="dark"]` in `css/style.css`
+
+- [x] 2. Storage layer (`js/script.js`)
+  - [x] 2.1 Implement `STORAGE_KEYS` constant object with keys for name, tasks, links, duration, and theme
+  - [x] 2.2 Implement `saveKey(key, value)` — JSON.stringify + localStorage.setItem wrapped in try/catch
+  - [x] 2.3 Implement `loadKey(key, defaultValue)` — localStorage.getItem + JSON.parse with try/catch fallback to defaultValue
+
+- [x] 3. Theme toggle (Requirement 7)
+  - [x] 3.1 Implement `applyTheme(theme)` — sets `data-theme` attribute on `<html>`
+  - [x] 3.2 Implement `initTheme()` — reads from localStorage (default `"light"`), calls `applyTheme()`; call this at the very top of `js/script.js` before any other initialisation to prevent FOUC
+  - [x] 3.3 Implement `toggleTheme()` — flips current theme, saves to localStorage, calls `applyTheme()`
+  - [x] 3.4 Add `#theme-toggle-btn` to `Index.html` and wire its `onclick` to `toggleTheme()`
+
+- [x] 4. Greeting widget (Requirements 1, 2)
+  - [x] 4.1 Implement `getGreeting(hour)` — returns the correct greeting string for hours 0–23 per the requirement ranges
+  - [x] 4.2 Implement `formatTime(date)` — returns `"HH:MM"` zero-padded 24-hour string
+  - [x] 4.3 Implement `formatDate(date)` — returns `"Weekday, Month Day"` string (e.g. `"Monday, July 14"`)
+  - [x] 4.4 Implement `updateGreetingWidget()` — reads current Date, updates `#greeting-text`, `#time-display`, `#date-display` DOM elements; appends saved name if present
+  - [x] 4.5 Implement `saveName()` — reads `#name-input`, trims, saves to localStorage, calls `updateGreetingWidget()`
+  - [x] 4.6 Implement `clearName()` — removes name from localStorage, clears `#name-input`, calls `updateGreetingWidget()`
+  - [x] 4.7 Call `updateGreetingWidget()` on page load and schedule it with `setInterval` every 60 seconds
+  - [x] 4.8 Add greeting widget HTML to `Index.html`: `#greeting-text`, `#time-display`, `#date-display`, `#name-input`, `#name-save-btn`, `#name-clear-btn`
+
+- [x] 5. Focus timer widget (Requirements 3, 4)
+  - [x] 5.1 Implement `formatTimerDisplay(seconds)` — returns `"MM:SS"` zero-padded string
+  - [x] 5.2 Implement the timer as a closure (`createTimer()`) encapsulating `intervalId` and `remainingSeconds`, exposing `start()`, `stop()`, `reset()`, and `setDuration(minutes)` methods
+  - [x] 5.3 Implement `saveDuration()` — reads `#duration-input`, validates integer in 1–120, shows `#duration-error` on failure, saves to localStorage and resets display on success
+  - [x] 5.4 Implement `initTimer()` — reads duration from localStorage (default 25), initialises display via `formatTimerDisplay`
+  - [x] 5.5 Implement timer completion notification — when countdown reaches 0, show `#timer-complete-msg` and attempt to play an audio beep (data URI, wrapped in try/catch)
+  - [x] 5.6 Add timer widget HTML to `Index.html`: `#timer-display`, `#timer-start-btn`, `#timer-stop-btn`, `#timer-reset-btn`, `#duration-input`, `#duration-save-btn`, `#duration-error`, `#timer-complete-msg`
+
+- [x] 6. To-do list widget (Requirement 5)
+  - [x] 6.1 Implement `loadTasks()` — reads tasks array from localStorage (default `[]`)
+  - [x] 6.2 Implement `renderTasks()` — rebuilds `#todo-list` `<ul>` from in-memory tasks array; each `<li>` contains a checkbox, text span, edit button, and delete button
+  - [x] 6.3 Implement `addTask()` — reads `#todo-input`, trims, rejects empty/whitespace, generates a unique ID, appends to tasks array, saves to localStorage, calls `renderTasks()`
+  - [x] 6.4 Implement `deleteTask(id)` — removes task by ID, saves to localStorage, calls `renderTasks()`
+  - [x] 6.5 Implement `toggleTask(id)` — flips `completed` boolean, saves to localStorage, calls `renderTasks()`
+  - [x] 6.6 Implement `editTask(id, newText)` — updates task text, saves to localStorage, calls `renderTasks()`
+  - [x] 6.7 Add todo widget HTML to `Index.html`: `#todo-input`, `#todo-add-btn`, `#todo-list`
+
+- [x] 7. Quick links widget (Requirement 6)
+  - [x] 7.1 Implement `loadLinks()` — reads links array from localStorage (default `[]`)
+  - [x] 7.2 Implement `renderLinks()` — rebuilds `#links-container` from in-memory links array; each entry renders as an `<a>` with `target="_blank" rel="noopener noreferrer"` and a delete button
+  - [x] 7.3 Implement `addLink()` — reads `#link-label-input` and `#link-url-input`, rejects empty/whitespace URL, generates unique ID, appends to links array, saves to localStorage, calls `renderLinks()`
+  - [x] 7.4 Implement `deleteLink(id)` — removes link by ID, saves to localStorage, calls `renderLinks()`
+  - [x] 7.5 Add quick links widget HTML to `Index.html`: `#link-label-input`, `#link-url-input`, `#link-add-btn`, `#links-container`
+
+- [x] 8. Styling (`css/style.css`)
+  - [x] 8.1 Style the overall page layout — centered, max-width container, widget cards with background and border using CSS custom properties
+  - [x] 8.2 Style the greeting widget — large time display, greeting heading, name input row
+  - [x] 8.3 Style the timer widget — large MM:SS display, button row, duration input row, error message, completion notification
+  - [x] 8.4 Style the to-do list widget — input row, task list items with checkbox, text, and action buttons; completed tasks with strikethrough
+  - [x] 8.5 Style the quick links widget — input row, link button grid
+  - [x] 8.6 Style the theme toggle button — fixed position or in header, sun/moon icon
+  - [x] 8.7 Verify all styles work correctly under `[data-theme="dark"]` overrides
+
+- [x] 9. Initialisation and wiring (`js/script.js`)
+  - [x] 9.1 Call `initTheme()` as the very first statement in `js/script.js`
+  - [x] 9.2 On `DOMContentLoaded`: call `initTimer()`, `loadTasks()` + `renderTasks()`, `loadLinks()` + `renderLinks()`, `updateGreetingWidget()`
+  - [x] 9.3 Wire all button `onclick` handlers (or `addEventListener` calls) for every widget control
+
+- [x] 10. Cross-browser compatibility and accessibility
+  - [x] 10.1 Add `lang` attribute to `<html>`, proper `<meta charset>` and `<meta name="viewport">` to `Index.html`
+  - [x] 10.2 Add `aria-label` or `<label>` elements for all inputs and icon-only buttons
+  - [x] 10.3 Verify no ES2020+ syntax is used that would break Safari; use `Date.now().toString()` instead of `crypto.randomUUID()` if Safari support for the latter is uncertain
+  - [x] 10.4 Manually smoke-test in Chrome, Firefox, Edge, and Safari: page load, theme persistence, all CRUD operations, timer countdown, data persistence across reload
+
+- [ ] 11. Property-based tests (`tests/`)
+  - [x] 11.1 Create `tests/index.html` loading fast-check and QUnit via CDN, and `tests/test.js`
+  - [x] 11.2 Write property test for Property 1: `getGreeting` exhaustiveness — `fc.integer({min:0, max:23})`, verify result is one of the four strings and matches the correct range (≥100 runs)
+  - [x] 11.3 Write property test for Property 2: `formatTimerDisplay` format — `fc.integer({min:0, max:7200})`, verify output matches `/^\d{2}:\d{2}$/` and seconds part ≤59 (≥100 runs)
+  - [x] 11.4 Write property test for Property 3: task addition round-trip — `fc.string` filtered non-whitespace, add task, verify localStorage contains task with same text and `completed: false`, length +1 (≥100 runs)
+  - [x] 11.5 Write property test for Property 4: whitespace rejection — `fc.stringMatching(/^\s*$/)`, verify `addTask()` and `addLink()` (whitespace URL) leave arrays unchanged (≥100 runs)
+  - [-] 11.6 Write property test for Property 5: toggle involution — generate task, toggle twice, verify `completed` is unchanged and localStorage matches (≥100 runs)
+  - [ ] 11.7 Write property test for Property 6: duration validation — `fc.integer({min:1, max:120})` accepted + persisted; out-of-range integers rejected, localStorage unchanged (≥100 runs)
+  - [ ] 11.8 Write property test for Property 7: theme round-trip — sequence of toggles, verify localStorage theme equals `data-theme` attribute; `initTheme()` restores saved value (≥100 runs)
+  - [ ] 11.9 Write property test for Property 8: localStorage serialisation round-trip — `fc.array` of task/link arbitraries, `saveKey` then `loadKey` produces deeply equal value (≥100 runs)
+  - [ ] 11.10 Write property test for Property 9: delete removes item — generate array + pick random item, delete it, verify absent from array and localStorage, others unchanged (≥100 runs)
+  - [ ] 11.11 Write property test for Property 10: localStorage fallback — mock localStorage to throw, verify `loadKey` returns defaultValue without throwing (≥100 runs)
