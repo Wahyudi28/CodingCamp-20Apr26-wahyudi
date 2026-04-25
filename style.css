@@ -354,3 +354,209 @@ input::placeholder {
     padding: 1rem;
   }
 }
+
+/* =============================================================================
+   Dancing Kids Background Animation
+   ============================================================================= */
+
+#dance-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* Make sure content sits above the background */
+section,
+#middle-row,
+header {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Kid character base ---- */
+.kid {
+  position: absolute;
+  bottom: 0;
+  width: 40px;
+  height: 80px;
+}
+
+.kid-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Head */
+.kid-head {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffd580;
+  border: 2px solid rgba(255,255,255,0.6);
+}
+
+/* Torso */
+.kid-torso {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 22px;
+  border-radius: 4px;
+}
+
+/* Arms */
+.kid-arm {
+  position: absolute;
+  top: 24px;
+  width: 8px;
+  height: 16px;
+  border-radius: 4px;
+  transform-origin: top center;
+}
+
+.kid-arm-left  { left: 4px; }
+.kid-arm-right { right: 4px; }
+
+/* Legs */
+.kid-leg {
+  position: absolute;
+  top: 46px;
+  width: 8px;
+  height: 20px;
+  border-radius: 4px;
+  transform-origin: top center;
+}
+
+.kid-leg-left  { left: 10px; }
+.kid-leg-right { right: 10px; }
+
+/* ---- Per-kid colours ---- */
+.kid-1 .kid-torso { background: #ff6b6b; }
+.kid-1 .kid-arm   { background: #ffd580; }
+.kid-1 .kid-leg   { background: #4ecdc4; }
+
+.kid-2 .kid-torso { background: #45b7d1; }
+.kid-2 .kid-arm   { background: #ffd580; }
+.kid-2 .kid-leg   { background: #f9ca24; }
+
+.kid-3 .kid-torso { background: #f9ca24; }
+.kid-3 .kid-arm   { background: #ffd580; }
+.kid-3 .kid-leg   { background: #6c5ce7; }
+
+.kid-4 .kid-torso { background: #a29bfe; }
+.kid-4 .kid-arm   { background: #ffd580; }
+.kid-4 .kid-leg   { background: #fd79a8; }
+
+.kid-5 .kid-torso { background: #55efc4; }
+.kid-5 .kid-arm   { background: #ffd580; }
+.kid-5 .kid-leg   { background: #e17055; }
+
+/* ---- Positions along the bottom ---- */
+.kid-1 { left:  5%; }
+.kid-2 { left: 22%; }
+.kid-3 { left: 50%; }
+.kid-4 { left: 72%; }
+.kid-5 { left: 88%; }
+
+/* ---- Body bounce ---- */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-18px); }
+}
+
+/* ---- Arm wave ---- */
+@keyframes armWaveLeft {
+  0%, 100% { transform: rotate(-20deg); }
+  50%       { transform: rotate(-80deg); }
+}
+@keyframes armWaveRight {
+  0%, 100% { transform: rotate(20deg); }
+  50%       { transform: rotate(80deg); }
+}
+
+/* ---- Leg kick ---- */
+@keyframes legKickLeft {
+  0%, 100% { transform: rotate(10deg); }
+  50%       { transform: rotate(-30deg); }
+}
+@keyframes legKickRight {
+  0%, 100% { transform: rotate(-10deg); }
+  50%       { transform: rotate(30deg); }
+}
+
+/* ---- Head bob ---- */
+@keyframes headBob {
+  0%, 100% { transform: translateX(-50%) rotate(-8deg); }
+  50%       { transform: translateX(-50%) rotate(8deg); }
+}
+
+/* Apply animations to each kid with different speeds/delays */
+.kid-1 .kid-body       { animation: bounce 0.7s ease-in-out infinite; }
+.kid-1 .kid-head       { animation: headBob 0.7s ease-in-out infinite; }
+.kid-1 .kid-arm-left   { animation: armWaveLeft  0.7s ease-in-out infinite; }
+.kid-1 .kid-arm-right  { animation: armWaveRight 0.7s ease-in-out infinite; }
+.kid-1 .kid-leg-left   { animation: legKickLeft  0.7s ease-in-out infinite; }
+.kid-1 .kid-leg-right  { animation: legKickRight 0.7s ease-in-out infinite; }
+
+.kid-2 .kid-body       { animation: bounce 0.9s ease-in-out infinite 0.2s; }
+.kid-2 .kid-head       { animation: headBob 0.9s ease-in-out infinite 0.2s; }
+.kid-2 .kid-arm-left   { animation: armWaveLeft  0.9s ease-in-out infinite 0.2s; }
+.kid-2 .kid-arm-right  { animation: armWaveRight 0.9s ease-in-out infinite 0.2s; }
+.kid-2 .kid-leg-left   { animation: legKickLeft  0.9s ease-in-out infinite 0.2s; }
+.kid-2 .kid-leg-right  { animation: legKickRight 0.9s ease-in-out infinite 0.2s; }
+
+.kid-3 .kid-body       { animation: bounce 0.6s ease-in-out infinite 0.1s; }
+.kid-3 .kid-head       { animation: headBob 0.6s ease-in-out infinite 0.1s; }
+.kid-3 .kid-arm-left   { animation: armWaveLeft  0.6s ease-in-out infinite 0.1s; }
+.kid-3 .kid-arm-right  { animation: armWaveRight 0.6s ease-in-out infinite 0.1s; }
+.kid-3 .kid-leg-left   { animation: legKickLeft  0.6s ease-in-out infinite 0.1s; }
+.kid-3 .kid-leg-right  { animation: legKickRight 0.6s ease-in-out infinite 0.1s; }
+
+.kid-4 .kid-body       { animation: bounce 0.8s ease-in-out infinite 0.35s; }
+.kid-4 .kid-head       { animation: headBob 0.8s ease-in-out infinite 0.35s; }
+.kid-4 .kid-arm-left   { animation: armWaveLeft  0.8s ease-in-out infinite 0.35s; }
+.kid-4 .kid-arm-right  { animation: armWaveRight 0.8s ease-in-out infinite 0.35s; }
+.kid-4 .kid-leg-left   { animation: legKickLeft  0.8s ease-in-out infinite 0.35s; }
+.kid-4 .kid-leg-right  { animation: legKickRight 0.8s ease-in-out infinite 0.35s; }
+
+.kid-5 .kid-body       { animation: bounce 0.75s ease-in-out infinite 0.5s; }
+.kid-5 .kid-head       { animation: headBob 0.75s ease-in-out infinite 0.5s; }
+.kid-5 .kid-arm-left   { animation: armWaveLeft  0.75s ease-in-out infinite 0.5s; }
+.kid-5 .kid-arm-right  { animation: armWaveRight 0.75s ease-in-out infinite 0.5s; }
+.kid-5 .kid-leg-left   { animation: legKickLeft  0.75s ease-in-out infinite 0.5s; }
+.kid-5 .kid-leg-right  { animation: legKickRight 0.75s ease-in-out infinite 0.5s; }
+
+/* ---- Floating musical notes ---- */
+.note {
+  position: absolute;
+  font-size: 1.8rem;
+  opacity: 0;
+  animation: floatNote 4s ease-in-out infinite;
+  color: rgba(255, 255, 255, 0.75);
+  text-shadow: 0 0 8px rgba(255,255,255,0.5);
+}
+
+@keyframes floatNote {
+  0%   { opacity: 0;   transform: translateY(0)    rotate(0deg); }
+  20%  { opacity: 0.9; }
+  80%  { opacity: 0.6; }
+  100% { opacity: 0;   transform: translateY(-120px) rotate(20deg); }
+}
+
+.note-1 { left:  8%; bottom: 90px; animation-delay: 0s;    animation-duration: 3.5s; }
+.note-2 { left: 25%; bottom: 85px; animation-delay: 0.8s;  animation-duration: 4s;   }
+.note-3 { left: 52%; bottom: 95px; animation-delay: 0.3s;  animation-duration: 3.8s; }
+.note-4 { left: 75%; bottom: 88px; animation-delay: 1.2s;  animation-duration: 4.2s; }
+.note-5 { left: 90%; bottom: 92px; animation-delay: 0.6s;  animation-duration: 3.6s; }
